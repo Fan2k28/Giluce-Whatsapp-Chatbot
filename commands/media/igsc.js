@@ -1,9 +1,9 @@
 /**
  * Instagram to Sticker Cropped - Convert Instagram media to cropped square sticker
- * Uses API-based approach
+ * Uses the same APIs as KnightBot-Mini
  */
 
-const axios = require('axios');
+const APIs = require('../../src/utils/api');
 const config = require('../../config');
 
 module.exports = {
@@ -33,29 +33,19 @@ module.exports = {
         });
         
         try {
-            // Use API to download Instagram media
-            const apiUrl = `https://api.nexray.web.id/downloader/ig?url=${encodeURIComponent(urlMatch[0])}`;
+            // Use Siputzx API from src/utils/api.js
+            const result = await APIs.igDownload(urlMatch[0]);
             
-            const response = await axios.get(apiUrl, {
-                timeout: 30000
-            });
-            
-            if (!response.data || !response.data.status || !response.data.result) {
+            if (!result || !result.data || result.data.length === 0) {
                 return await sock.sendMessage(from, { 
                     text: '❌ Failed to fetch media from Instagram link.' 
                 });
             }
             
-            const results = response.data.result;
-            
-            if (!results || results.length === 0) {
-                return await sock.sendMessage(from, { 
-                    text: '❌ No media found at the provided link.' 
-                });
-            }
+            const mediaData = result.data;
             
             // Process first item
-            const media = results[0];
+            const media = mediaData[0];
             const mediaUrl = media.url || media.videoUrl || media.imageUrl;
             
             if (!mediaUrl) {
@@ -66,15 +56,16 @@ module.exports = {
             
             const isVideo = media.type === 'video' || mediaUrl.includes('.mp4');
             
+            // Send as image/video (sticker conversion requires FFmpeg)
             if (isVideo) {
                 await sock.sendMessage(from, {
                     video: { url: mediaUrl },
-                    caption: `*DOWNLOADED BY ${config.botName.toUpperCase()}*\n\n💡 Cropped sticker requires FFmpeg. Sent as video instead.`
+                    caption: `*DOWNLOADED BY ${config.botName.toUpperCase()}*\n\n💡 Video sent as video.`
                 }, { quoted: msg });
             } else {
                 await sock.sendMessage(from, {
                     image: { url: mediaUrl },
-                    caption: `*DOWNLOADED BY ${config.botName.toUpperCase()}*\n\n💡 Cropped sticker conversion requires FFmpeg setup. Sent as image instead.`
+                    caption: `*DOWNLOADED BY ${config.botName.toUpperCase()}*\n\n💡 Image sent as image.`
                 }, { quoted: msg });
             }
             

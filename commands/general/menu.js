@@ -6,6 +6,7 @@ const config = require('../../config');
 
 module.exports = {
     name: 'menu',
+    aliases: ['help'],
     description: 'Display bot menu',
     category: 'general',
     
@@ -23,7 +24,24 @@ module.exports = {
 │ ├ .ping - Tester le bot
 │ ├ .info - Info du bot
 │ ├ .owner - Propriétaire
-│ └ .groupinfo - Groupe
+│ ├ .uptime - Temps en ligne
+│ ├ .github - Repo GitHub
+│ ├ .list - Liste cmd
+│ ├ .getpp - Photo de profil
+│ ├ .qr - Générer QR code
+│ ├ .translate - Traduire
+│ ├ .tts - Texte en audio
+│ ├ .ssweb - Capture écran
+│ ├ .viewonce - Voir msg unique
+│ ├ .groupinfo - Info groupe
+│ ├ .groupstats - Stats groupe
+│ ├ .myactivity - Mon activité
+│ ├ .sticker - Créer sticker
+│ ├ .simage - Sticker→image
+│ ├ .take - Voler sticker
+│ ├ .crop - Rogner sticker
+│ ├ .attp - Sticker animé
+│ └ .igs - Sticker Instagram
 │
 │ 📥 Médias
 │ ├ .facebook - FB video
@@ -33,14 +51,20 @@ module.exports = {
 │ ├ .song - YouTube audio
 │ ├ .video - YouTube video
 │ ├ .lyrics - Paroles
-│ ├ .igs - IG sticker
 │ └ .igsc - IG sticker crop
 │
 │ 🎮 Fun
 │ ├ .meme - Meme
 │ ├ .joke - Blague
 │ ├ .truth - Vérité
-│ └ .dare - Défi
+│ ├ .dare - Défi
+│ ├ .compliment - Compliment
+│ ├ .flirt - Flirt
+│ ├ .insult - Insulte
+│ ├ .ship - Ship users
+│ ├ .gayrate - Gay rate
+│ ├ .bomb - Jeu bombe
+│ └ .ttt - TicTacToe
 │
 │ 🛡️ Admin (Groupe)
 │ ├ .kick - Exclure
@@ -52,7 +76,19 @@ module.exports = {
 │
 │ 👑 Owner
 │ ├ .broadcast - Diffuser
-│ └ .block - Bloquer
+│ ├ .block - Bloquer
+│ ├ .unblock - Débloquer
+│ ├ .mode - Mode privé/public
+│ ├ .setprefix - Changer préfixe
+│ ├ .setbotname - Changer nom bot
+│ ├ .setbotpp - Photo de profil
+│ ├ .anticall - Anti-appel
+│ ├ .autoreact - Auto-réaction
+│ ├ .newsletter - Info chaîne
+│ ├ .setnewsletter - Définir chaîne
+│ ├ .setmenuimage - Image menu
+│ ├ .restart - Redémarrer
+│ └ .update - Mettre à jour
 │
 ├─── ⚡ INFO ────┤
 │ Prefix: ${config.prefix}

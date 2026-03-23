@@ -1,0 +1,52 @@
+/**
+ * Dare - Get a random dare challenge
+ */
+
+module.exports = {
+    name: 'dare',
+    aliases: [],
+    category: 'fun',
+    description: 'Get a random dare challenge',
+    usage: '.dare',
+    
+    async execute(sock, msg, args, context) {
+        const { from } = context;
+        
+        try {
+            const dares = [
+                "Send a screenshot of your gallery!",
+                "Let someone else write a status on your WhatsApp!",
+                "Call a random contact and sing them a song!",
+                "Post an embarrassing selfie!",
+                "Text your crush and confess your feelings!",
+                "Do 20 pushups and send a video!",
+                "Change your profile picture to something embarrassing for 24 hours!",
+                "Send a voice note singing the alphabet!",
+                "Let the group choose your status for a day!",
+                "Tell the group your most embarrassing moment!",
+                "Share your last 5 Google searches!",
+                "Dance in front of everyone for 1 minute!",
+                "Do your best impression of someone in the group!",
+                "Speak in an accent for the next 10 minutes!",
+                "Post a story saying 'I lost a bet' for 24 hours!",
+                "Let someone go through your phone for 2 minutes!",
+                "Send a flirty message to a random contact!",
+                "Do 50 jumping jacks!",
+                "Tell a joke, if no one laughs do the dare again!",
+                "Record yourself doing a TikTok dance!"
+            ];
+            
+            const randomDare = dares[Math.floor(Math.random() * dares.length)];
+            
+            await sock.sendMessage(from, {
+                text: `🎯 *DARE*\n\n${randomDare}`
+            }, { quoted: msg });
+            
+        } catch (error) {
+            console.error('Dare Error:', error);
+            await sock.sendMessage(from, {
+                text: `❌ Error: ${error.message}`
+            }, { quoted: msg });
+        }
+    }
+};

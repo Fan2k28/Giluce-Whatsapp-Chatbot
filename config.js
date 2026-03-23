@@ -5,11 +5,11 @@
 
 module.exports = {
     // Bot Owner Configuration
-    ownerNumber: ['237671624397'], // Add your number without + or spaces
+    ownerNumber: ['237698954932','237671624397'], // Add your number without + or spaces
     ownerName: ['Giluce Bot', 'Admin'],
     
     // Bot Configuration
-    botName: 'Giluce Bot',
+    botName: 'Giluce',
     prefix: '.',
     sessionName: 'session',
     sessionID: process.env.SESSION_ID || '',
@@ -21,10 +21,10 @@ module.exports = {
     // Bot Behavior
     selfMode: false, // Private mode - only owner can use commands
     autoRead: false,
-    autoTyping: false,
+    autoTyping: true,
     autoBio: false,
     autoSticker: false,
-    autoReact: true,
+    autoReact: false,
     autoReactMode: 'all', // set bot or all via cmd
     
     // Group Settings Defaults

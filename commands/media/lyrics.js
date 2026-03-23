@@ -17,7 +17,7 @@ module.exports = {
         
         if (args.length === 0) {
             return await sock.sendMessage(from, { 
-                text: `❌ Please provide a song name!\n\nExample: .lyrics Despacito` 
+                text: `❌ Please provide a song name!\n\nExample: .lyrics Eminem - Lose Yourself` 
             });
         }
         
@@ -54,6 +54,104 @@ module.exports = {
                 }
             } catch (err) {
                 console.log('Siputzx API failed');
+            }
+        }
+        
+        // API 3: Lyrics.ovh (free API - fallback)
+        if (!lyricsData) {
+            try {
+                // First, search for the song to get artist and title
+                const searchQuery = query.replace(/\s+/g, ' ').trim();
+                const searchParts = searchQuery.split(' - ');
+                
+                if (searchParts.length >= 2) {
+                    // Format: "Artist - Title"
+                    const artist = searchParts[0].trim();
+                    const title = searchParts.slice(1).join(' ').trim();
+                    
+                    const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
+                    if (response.data && response.data.lyrics) {
+                        lyricsData = {
+                            title: title,
+                            artist: artist,
+                            lyrics: response.data.lyrics,
+                            thumbnail: null
+                        };
+                    }
+                } else {
+                    // Try common patterns - if user just type song name, we need to guess
+                    // Try finding artist/title from different formats
+                    // Try just direct query (less accurate)
+                    const tryQueries = [
+                        searchQuery,
+                        searchQuery + ' lyrics'
+                    ];
+                    
+                    for (const q of tryQueries) {
+                        // We need both artist and title, so this is harder
+                        // Try some common patterns
+                        const parts = q.split(' ');
+                        if (parts.length >= 2) {
+                            // Try first word as artist, rest as title
+                            const artist = parts.slice(0, 2).join(' ');
+                            const title = parts.slice(2).join(' ');
+                            if (title) {
+                                const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
+                                if (response.data && response.data.lyrics) {
+                                    lyricsData = {
+                                        title: title,
+                                        artist: artist,
+                                        lyrics: response.data.lyrics,
+                                        thumbnail: null
+                                    };
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log('Lyrics.ovh API failed:', err.message);
+            }
+        }
+        
+        // API 4: Genius-Lyrics (free API - fallback)
+        if (!lyricsData) {
+            try {
+                const searchQuery = query.replace(/\s+/g, ' ').trim();
+                
+                // Try to search via search APIs then get lyrics
+                const parts = searchQuery.split(/[-–—]/);
+                if (parts.length >= 2) {
+                    const artist = parts[0].trim();
+                    const title = parts.slice(1).join('-').trim();
+                    
+                    // Try multiple title formats (clean parentheses and brackets)
+                    const titleVariants = [
+                        title,
+                        title.replace(/\([^)]*\)/g, '').trim(),
+                        title.replace(/\[[^\]]*\]/g, '').trim(),
+                        title.replace(/\(.*\)|\[.*\]/g, '').trim()
+                    ];
+                    
+                    for (const t of titleVariants) {
+                        if (t && t.length > 2) {
+                            // Try first with Lyrics.ovh (which sources from Genius)
+                            const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(t)}`);
+                            if (response.data && response.data.lyrics) {
+                                lyricsData = {
+                                    title: t,
+                                    artist: artist,
+                                    lyrics: response.data.lyrics,
+                                    thumbnail: null
+                                };
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log('Genius-Lyrics API failed:', err.message);
             }
         }
         

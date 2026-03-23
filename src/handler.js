@@ -74,13 +74,21 @@ const getLiveGroupMetadata = async (sock, groupId) => {
 const isOwner = (sender) => {
     if (!sender) return false;
     
-    const normalizedSender = normalizeJidWithLid(sender);
-    const senderNumber = normalizeJid(normalizedSender);
+    // Extract phone number from sender JID
+    let senderNumber = sender.split('@')[0];
     
+    // Handle device IDs (format: number:device)
+    if (senderNumber.includes(':')) {
+        senderNumber = senderNumber.split(':')[0];
+    }
+    
+    // Check against owner numbers
     return config.ownerNumber.some(owner => {
-        const normalizedOwner = normalizeJidWithLid(owner.includes('@') ? owner : `${owner}@s.whatsapp.net`);
-        const ownerNumber = normalizeJid(normalizedOwner);
-        return ownerNumber === senderNumber;
+        // Extract owner number
+        let ownerNumber = owner.includes('@') ? owner.split('@')[0] : owner;
+       
+        // Compare numbers (direct match)
+        return senderNumber === ownerNumber;
     });
 };
 
@@ -533,6 +541,7 @@ const handleMessage = async (sock, msg) => {
         if (config.selfMode && !isOwner(sender)) return;
         
         if (command.ownerOnly && !isOwner(sender)) {
+            console.log(`Unauthorized command attempt: ${commandName} by ${sender}`);
             return sock.sendMessage(from, { text: config.messages.ownerOnly }, { quoted: msg });
         }
         
@@ -607,11 +616,11 @@ const createContext = async (sock, msg, from, sender, isGroup, groupMetadata) =>
         reply: (text) => {
             if (!from || !from.includes('@')) return Promise.resolve();
             return sock.sendMessage(from, { text }, { quoted: msg });
-        },
-        react: (emoji) => {
-            if (!from || !from.includes('@')) return Promise.resolve();
-            return sock.sendMessage(from, { react: { text: emoji, key: msg.key } });
         }
+        // ,react: (emoji) => {
+        //     if (!from || !from.includes('@')) return Promise.resolve();
+        //     return sock.sendMessage(from, { react: { text: emoji, key: msg.key } });
+        // }
     };
 };
 

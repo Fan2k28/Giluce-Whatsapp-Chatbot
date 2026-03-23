@@ -275,6 +275,34 @@ const APIs = {
     }
   },
   
+  // Facebook Download
+  fbDownload: async (url) => {
+    try {
+      const response = await api.get(`https://api.siputzx.my.id/api/d/fbdl`, {
+        params: { url }
+      });
+      if (response.data && response.data.status && response.data.data) {
+        let videoUrl = null;
+        
+        if (response.data.data.hd) {
+          videoUrl = response.data.data.hd;
+        } else if (response.data.data.sd) {
+          videoUrl = response.data.data.sd;
+        } else if (response.data.data.url) {
+          videoUrl = response.data.data.url;
+        }
+        
+        return {
+          videoUrl,
+          title: response.data.data.title || 'Facebook Video'
+        };
+      }
+      throw new Error('Invalid API response');
+    } catch (error) {
+      throw new Error('Failed to download Facebook video');
+    }
+  },
+  
   // Random Meme
   getMeme: async () => {
     try {
@@ -292,6 +320,84 @@ const APIs = {
       return response.data;
     } catch (error) {
       throw new Error('Failed to fetch joke');
+    }
+  },
+  
+  // Translate Text
+  translate: async (text, targetLang) => {
+    try {
+      const response = await api.get(`https://api.mymemory.translated.net/get`, {
+        params: {
+          q: text,
+          langpair: `en|${targetLang}`
+        }
+      });
+      if (response.data && response.data.responseStatus === 200) {
+        return {
+          translation: response.data.responseData.translatedText,
+          source: response.data.responseData.match
+        };
+      }
+      throw new Error('Translation failed');
+    } catch (error) {
+      throw new Error('Failed to translate text');
+    }
+  },
+  
+  // Text to Speech
+  textToSpeech: async (text) => {
+    try {
+      // Using Google TTS API (free)
+      const encodedText = encodeURIComponent(text);
+      const response = await api.get(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=en&client=tw-ob`, {
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (response.data && response.data.length > 0) {
+        // Return the audio buffer directly
+        return Buffer.from(response.data);
+      }
+      throw new Error('TTS failed');
+    } catch (error) {
+      throw new Error('Failed to generate speech');
+    }
+  },
+  
+  // Screenshot Website
+  screenshotWebsite: async (url) => {
+    try {
+      const response = await api.get(`https://api.screenshotlayer.com/api/capture`, {
+        params: {
+          url: url,
+          viewport: '1920x1080',
+          width: 1920,
+          format: 'PNG',
+          fullpage: 0
+        },
+        timeout: 30000
+      });
+      
+      if (response.data && response.data.length > 0) {
+        return Buffer.from(response.data);
+      }
+      throw new Error('Screenshot failed');
+    } catch (error) {
+      // Try alternative API
+      try {
+        const altResponse = await api.get(`https://image.thum.io/get/url=${url}`, {
+          timeout: 30000,
+          responseType: 'arraybuffer'
+        });
+        if (altResponse.data && altResponse.data.length > 0) {
+          return Buffer.from(altResponse.data);
+        }
+        throw new Error('Screenshot failed');
+      } catch (altError) {
+        throw new Error('Failed to capture website screenshot');
+      }
     }
   }
 };

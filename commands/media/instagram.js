@@ -1,9 +1,10 @@
 /**
  * Instagram Downloader - Download Instagram photos/videos/reels
- * Uses API-based approach
+ * Uses the same APIs as KnightBot-Mini
  */
 
 const axios = require('axios');
+const APIs = require('../../src/utils/api');
 const config = require('../../config');
 
 module.exports = {
@@ -49,31 +50,21 @@ module.exports = {
         });
         
         try {
-            // Use API to download Instagram media
-            const apiUrl = `https://api.nexray.web.id/downloader/ig?url=${encodeURIComponent(text)}`;
+            // Use Siputzx API from src/utils/api.js
+            const result = await APIs.igDownload(text);
             
-            const response = await axios.get(apiUrl, {
-                timeout: 30000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            
-            if (!response.data || !response.data.status || !response.data.result) {
-                throw new Error('Invalid API response');
-            }
-            
-            const results = response.data.result;
-            
-            if (!results || results.length === 0) {
+            if (!result || !result.data || result.data.length === 0) {
                 return await sock.sendMessage(from, { 
                     text: '❌ No media found at the provided link. The post might be private or the link is invalid.' 
                 });
             }
             
+            const mediaData = result.data;
+            
             // Download each media item
-            for (const media of results) {
+            for (let i = 0; i < Math.min(20, mediaData.length); i++) {
                 try {
+                    const media = mediaData[i];
                     const mediaUrl = media.url || media.videoUrl || media.imageUrl;
                     
                     if (!mediaUrl) continue;
@@ -94,10 +85,12 @@ module.exports = {
                     }
                     
                     // Add small delay between downloads
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    if (i < mediaData.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
                     
                 } catch (mediaError) {
-                    console.error(`Error downloading media:`, mediaError.message);
+                    console.error(`Error downloading media ${i + 1}:`, mediaError.message);
                 }
             }
         } catch (error) {

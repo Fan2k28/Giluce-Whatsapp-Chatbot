@@ -178,7 +178,9 @@ const removeModerator = (userId) => {
 const isModerator = (userId) => {
     const mods = getModerators();
     return mods.includes(userId);
+
 };
+
 
 // ==================== EXPORTS ====================
 

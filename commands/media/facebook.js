@@ -1,9 +1,10 @@
 /**
  * Facebook Downloader - Download Facebook videos
- * Uses API-based approach
+ * Uses the same APIs as KnightBot-Mini
  */
 
 const axios = require('axios');
+const APIs = require('../../src/utils/api');
 const config = require('../../config');
 
 module.exports = {
@@ -58,35 +59,10 @@ module.exports = {
         });
         
         try {
-            // Use RapidAPI or other free Facebook downloader API
-            const apiUrl = `https://api.nexray.web.id/downloader/fb?url=${encodeURIComponent(url)}`;
+            // Use Siputzx API from src/utils/api.js
+            const result = await APIs.fbDownload(url);
             
-            const response = await axios.get(apiUrl, {
-                timeout: 30000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            
-            if (!response.data || !response.data.status || !response.data.result) {
-                throw new Error('Invalid API response');
-            }
-            
-            const result = response.data.result;
-            
-            // Get video URL from result
-            let videoUrl = result.videoUrl || result.url || result.download;
-            
-            if (!videoUrl) {
-                // Try alternative format
-                if (result.hd || result.sd) {
-                    videoUrl = result.hd || result.sd;
-                } else if (result.media && result.media.length > 0) {
-                    videoUrl = result.media[0].url;
-                }
-            }
-            
-            if (!videoUrl) {
+            if (!result || !result.videoUrl) {
                 throw new Error('Could not get video URL from API');
             }
             
@@ -98,20 +74,25 @@ module.exports = {
                 caption = `*${result.title}*\n\n${caption}`;
             }
             
-            // Send video
+            // Try to send video
             try {
                 await sock.sendMessage(from, {
-                    video: { url: videoUrl },
+                    video: { url: result.videoUrl },
                     mimetype: 'video/mp4',
                     caption: caption
                 }, { quoted: msg });
             } catch (sendError) {
                 // If URL fails, try downloading as buffer
                 console.error('URL send failed, trying buffer:', sendError.message);
-                const videoResponse = await axios.get(videoUrl, {
+                
+                const videoResponse = await axios.get(result.videoUrl, {
                     responseType: 'arraybuffer',
                     timeout: 60000,
-                    maxContentLength: 100 * 1024 * 1024
+                    maxContentLength: 100 * 1024 * 1024,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Referer': 'https://www.facebook.com/'
+                    }
                 });
                 
                 const videoBuffer = Buffer.from(videoResponse.data);

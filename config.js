@@ -55,7 +55,8 @@ module.exports = {
     apiKeys: {
         openai: process.env.OPENAI_API_KEY || '',
         deepai: '',
-        remove_bg: ''
+        remove_bg: '',
+        rapidapi: process.env.RAPIDAPI_KEY || ''
     },
     
     // Message Configuration

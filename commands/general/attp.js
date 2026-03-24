@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { writeExifVid } = require('../../src/utils/exif');
+const { writeExif } = require('../../src/utils/exif');
 
 module.exports = {
     name: 'attp',
@@ -39,8 +39,9 @@ module.exports = {
             });
             
             try {
-                const webpBuffer = await renderBlinkingVideoWithFfmpeg(text);
-                const finalBuffer = await writeExifVid(webpBuffer, { packname: 'Giluce Bot' });
+                const mp4Buffer = await renderBlinkingVideoWithFfmpeg(text);
+                const webpBuffer = await require('../../src/utils/videoToWebp').videoToWebp(mp4Buffer);
+                const finalBuffer = await writeExif(webpBuffer, { packname: 'Giluce Bot' });
                 await sock.sendMessage(from, { sticker: finalBuffer }, { quoted: msg });
             } catch (error) {
                 console.error('Error generating attp sticker:', error);

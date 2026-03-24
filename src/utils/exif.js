@@ -14,7 +14,11 @@ const config = require('../../config');
  */
 async function writeExifVid(imgBuffer, metadata = {}) {
     const img = new webp.Image();
-    await img.load(imgBuffer);
+    try {
+        await img.load(imgBuffer);
+    } catch (error) {
+        throw new Error('Invalid image buffer: ' + error.message);
+    }
     
     const json = {
         'sticker-pack-id': crypto.randomBytes(32).toString('hex'),

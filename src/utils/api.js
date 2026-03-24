@@ -3,6 +3,7 @@
  */
 
 const axios = require('axios');
+const config = require('../../config');
 
 const api = axios.create({
   timeout: 30000,
@@ -275,31 +276,61 @@ const APIs = {
     }
   },
   
-  // Facebook Download
-  fbDownload: async (url) => {
+  // Facebook Download via RapidAPI
+  fbDownloadRapid: async (url) => {
+    const apiKey = "d76a8929bfmsh1553ab6b7410026p11e63ejsn02a7ce9923d";
+    // const apiKey = config.apiKeys.rapidapi;
+    if (!apiKey) {
+      throw new Error('RapidAPI key not configured. Please set RAPIDAPI_KEY in your environment or config.');
+    }
+    
+    const options = {
+      method: 'POST',
+      url: 'https://facebook-video-downloader.p.rapidapi.com/index',
+      params: { url: url },
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'facebook-video-downloader.p.rapidapi.com'
+      }
+    };
+    
     try {
-      const response = await api.get(`https://api.siputzx.my.id/api/d/fbdl`, {
-        params: { url }
-      });
-      if (response.data && response.data.status && response.data.data) {
+      const response = await axios.request(options);
+      if (response.data && response.data.success) {
         let videoUrl = null;
+        let title = 'Facebook Video';
         
-        if (response.data.data.hd) {
-          videoUrl = response.data.data.hd;
-        } else if (response.data.data.sd) {
-          videoUrl = response.data.data.sd;
-        } else if (response.data.data.url) {
-          videoUrl = response.data.data.url;
+        // Try to get HD quality first, then SD
+        if (response.data.data && response.data.data.length > 0) {
+          const videos = response.data.data;
+          const hdVideo = videos.find(v => v.quality === 'HD');
+          const sdVideo = videos.find(v => v.quality === 'SD');
+          
+          if (hdVideo) {
+            videoUrl = hdVideo.url;
+          } else if (sdVideo) {
+            videoUrl = sdVideo.url;
+          } else if (videos[0]) {
+            videoUrl = videos[0].url;
+          }
         }
         
-        return {
-          videoUrl,
-          title: response.data.data.title || 'Facebook Video'
-        };
+        if (response.data.meta && response.data.meta.title) {
+          title = response.data.meta.title;
+        }
+        
+        if (!videoUrl) {
+          throw new Error('No video URL found in API response');
+        }
+        
+        return { videoUrl, title };
       }
-      throw new Error('Invalid API response');
+      throw new Error('Invalid API response from RapidAPI');
     } catch (error) {
-      throw new Error('Failed to download Facebook video');
+      if (error.response) {
+        throw new Error(`RapidAPI error: ${error.response.status} - ${error.response.statusText}`);
+      }
+      throw new Error('Failed to download Facebook video via RapidAPI');
     }
   },
   

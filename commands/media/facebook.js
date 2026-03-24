@@ -59,8 +59,8 @@ module.exports = {
         });
         
         try {
-            // Use Siputzx API from src/utils/api.js
-            const result = await APIs.fbDownload(url);
+            // Use RapidAPI Facebook Download
+            const result = await APIs.fbDownloadRapid(url);
             
             if (!result || !result.videoUrl) {
                 throw new Error('Could not get video URL from API');

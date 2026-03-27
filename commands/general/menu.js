@@ -73,6 +73,17 @@ module.exports = {
 │ ├ .lyrics - Paroles
 │ └ .igsc - IG sticker crop
 │
+│ 🎌 Anime
+│ ├ .waifu - Waifu SFW
+│ ├ .neko - Neko SFW
+│ ├ .konachan - Konachan
+│ ├ .random - Anime random
+│ ├ .hwaifu - Hwaifu NSFW
+│ ├ .hneko - Hneko NSFW
+│ ├ .loli - Loli NSFW
+│ ├ .megumin - Megumin
+│ └ .milf - Milf NSFW
+│
 │ 🎮 Fun
 │ ├ .meme - Meme
 │ ├ .joke - Blague

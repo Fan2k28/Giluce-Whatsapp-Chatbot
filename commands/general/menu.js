@@ -43,6 +43,26 @@ module.exports = {
 │ ├ .attp - Sticker animé
 │ └ .igs - Sticker Instagram
 │
+│ 🎨 TextMaker
+│ ├ .1917 - Style 1917
+│ ├ .arena - Arena
+│ ├ .blackpink - Blackpink
+│ ├ .devil - Démon
+│ ├ .fire - Feu
+│ ├ .glitch - Glitch
+│ ├ .hacker - Hacker
+│ ├ .ice - Glace
+│ ├ .impressive - Impressionnant
+│ ├ .leaves - Feuilles
+│ ├ .light - Lumière
+│ ├ .matrix - Matrix
+│ ├ .metallic - Métallique
+│ ├ .neon - Néon
+│ ├ .purple - Violet
+│ ├ .sand - Sable
+│ ├ .snow - Neige
+│ └ .thunder - Tonnerre
+│
 │ 📥 Médias
 │ ├ .facebook - FB video
 │ ├ .instagram - IG media

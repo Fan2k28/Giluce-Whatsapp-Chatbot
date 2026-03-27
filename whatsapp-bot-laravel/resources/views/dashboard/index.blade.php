@@ -106,9 +106,11 @@
     <div class="content-card wide">
         <div class="card-header">
             <h3 class="card-title">Sessions WhatsApp</h3>
+            @if(isset($canCreateSession) && $canCreateSession)
             <button type="button" class="card-action" data-bs-toggle="modal" data-bs-target="#connectWhatsAppModal">
                 <i class="ph ph-plus"></i> Nouvelle session
             </button>
+            @endif
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -129,9 +131,11 @@
                 <div id="noSessionsMessage" class="text-center py-4" style="display: none;">
                     <i class="ph ph-whatsapp-logo" style="font-size: 3rem; color: var(--gray); opacity: 0.5;"></i>
                     <p class="mt-3" style="color: var(--gray);">Aucune session WhatsApp connectée</p>
+                    @if(isset($canCreateSession) && $canCreateSession)
                     <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#connectWhatsAppModal">
                         <i class="ph ph-qr-code"></i> Connecter WhatsApp
                     </button>
+                    @endif
                 </div>
             </div>
         </div>

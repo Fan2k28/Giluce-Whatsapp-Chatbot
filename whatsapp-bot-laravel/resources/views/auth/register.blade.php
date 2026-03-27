@@ -407,12 +407,13 @@
         }
     });
     
-    // Form submission with SweetAlert
+    // Form submission with SweetAlert and AJAX
     document.getElementById('registerForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const password = document.getElementById('password').value;
         const passwordConfirm = document.getElementById('password_confirmation').value;
+        const terms = document.getElementById('terms');
         
         // Check password match
         if (password !== passwordConfirm) {
@@ -438,28 +439,69 @@
             return;
         }
         
+        // Check terms
+        if (!terms.checked) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur',
+                text: 'Vous devez accepter les conditions d\'utilisation!',
+                confirmButtonColor: '#4A8FD8',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+        
         // Show loading
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création du compte...';
         
-        // Simulate registration (replace with actual form submission)
-        setTimeout(() => {
+        // Get form data
+        const formData = new FormData(this);
+        
+        // Submit form via AJAX
+        fetch('/register', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': formData.get('_token')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Compte créé!',
+                    text: data.message || 'Bienvenue sur Giluce!',
+                    confirmButtonColor: '#3ED16A',
+                    confirmButtonText: 'Continuer'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.redirect || '/dashboard';
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erreur',
+                    text: data.message || 'Une erreur est survenue',
+                    confirmButtonColor: '#4A8FD8'
+                });
+            }
+        })
+        .catch(error => {
             Swal.fire({
-                icon: 'success',
-                title: 'Compte créé!',
-                text: 'Bienvenue sur Giluce! Vérifiez votre email pour confirmer votre compte.',
-                confirmButtonColor: '#3ED16A',
-                confirmButtonText: 'Continuer'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '/dashboard';
-                }
+                icon: 'error',
+                title: 'Erreur',
+                text: 'Une erreur de connexion est survenue',
+                confirmButtonColor: '#4A8FD8'
             });
-            
+        })
+        .finally(() => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Créer mon compte';
-        }, 2000);
+        });
     });
     
     // Social login placeholders

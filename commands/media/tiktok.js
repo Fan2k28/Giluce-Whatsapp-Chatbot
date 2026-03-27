@@ -16,7 +16,7 @@ module.exports = {
     category: 'media',
     description: 'Download TikTok videos',
     usage: '.tiktok <TikTok URL>',
-    
+    //test
     async execute(sock, msg, args, context) {
         const { from } = context;
         

@@ -1,0 +1,13 @@
+{
+  "ignore": [
+    "auth_info.json",
+    "baileys_session/*",
+    "sessions/*",
+    "*.log",
+    "database/**",
+    "src/utils/**",
+    "node_modules/**",
+    "*.json"
+  ],
+  "ext": "js,json"
+}

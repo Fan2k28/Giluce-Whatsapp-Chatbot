@@ -867,6 +867,9 @@
                 <a href="/sessions" class="menu-item @if(request()->is('sessions*')) active @endif">
                     <i class="ph ph-whatsapp-logo"></i>
                     <span>WhatsApp</span>
+                    @if(isset($canCreateSession) && $canCreateSession && isset($sessionCount) && $sessionCount == 0)
+                    <span class="badge">Nouveau</span>
+                    @endif
                 </a>
                 <a href="#" class="menu-item">
                     <i class="ph ph-chat-circle-dots"></i>

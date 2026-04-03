@@ -79,7 +79,7 @@ class SessionManager {
             browser: ['Chrome', 'Windows', '10.0'],
             logger: this.logger,
             connectTimeoutMs: 60_000,
-            keepAliveIntervalMs: 30_000,
+            keepAliveIntervalMs: 20_000,
             patchMessageBeforeSending: (msg) => msg,
             // Memory optimization: prevent loading old messages into RAM
             syncFullHistory: false,

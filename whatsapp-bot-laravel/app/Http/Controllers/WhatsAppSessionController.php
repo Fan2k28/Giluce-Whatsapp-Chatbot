@@ -36,13 +36,13 @@ class WhatsAppSessionController extends Controller
         $this->syncUserSessionsWithDatabase($apiSessions, $user->id);
         
         // Get updated sessions from database
+        // dd($apiSessions);
         $userSessions = WhatsAppSession::forUser($user->id)->get();
         
         // Map to API session format for display
         $sessions = $userSessions->map(function($dbSession) use ($apiSessions) {
             // Find matching API session
             $apiSession = collect($apiSessions)->firstWhere('id', $dbSession->session_id);
-            
             if ($apiSession) {
                 return (object) [
                     'id' => $apiSession->id,
@@ -61,6 +61,7 @@ class WhatsAppSessionController extends Controller
                 'lastSeen' => $dbSession->last_seen,
             ];
         })->toArray();
+       
         
         return view('sessions.index', ['sessions' => $sessions]);
     }
@@ -76,6 +77,7 @@ class WhatsAppSessionController extends Controller
         
         // Update only the sessions that belong to this user
         foreach ($localSessions as $localSession) {
+            
             // Find matching session in API response
             $apiSession = collect($apiSessions)->firstWhere('id', $localSession->session_id);
             

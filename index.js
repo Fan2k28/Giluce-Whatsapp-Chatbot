@@ -165,9 +165,15 @@ const setupSocketHandlers = (sock, sessionId) => {
     
     // Anti-call
     handler.initializeAntiCall(sock);
+    
+    // Initialize automation - don't pass sock, it will get sessions from sessionManager
+    // handler.initializeAutomation(sock);
 };
 
 // ==================== AUTO-LOAD EXISTING SESSIONS ====================
+
+// Initialize automation system once at startup (it will get sessions internally)
+handler.initializeAutomation();
 
 // Wait for sessions to load then setup handlers
 setTimeout(() => {

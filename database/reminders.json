@@ -1,0 +1,29 @@
+{
+  "remind_1774625714241_s3tfn9f60": {
+    "chatId": "237671624397@s.whatsapp.net",
+    "userId": "237671624397@s.whatsapp.net",
+    "mentionJid": null,
+    "message": "Hello world it's me lastrategie",
+    "reminderTime": 1774625834241,
+    "sent": true,
+    "createdAt": 1774625714242
+  },
+  "remind_1774625798245_tgts8hvwe": {
+    "chatId": "237671624397@s.whatsapp.net",
+    "userId": "237671624397@s.whatsapp.net",
+    "mentionJid": null,
+    "message": "Hello world it's me lastrategie",
+    "reminderTime": 1774625880000,
+    "sent": true,
+    "createdAt": 1774625798245
+  },
+  "remind_1774626210197_9qr686xq4": {
+    "chatId": "237671624397@s.whatsapp.net",
+    "userId": "237671624397@s.whatsapp.net",
+    "mentionJid": null,
+    "message": "Hello world it's me lastrategie",
+    "reminderTime": 1774626330197,
+    "sent": true,
+    "createdAt": 1774626210197
+  }
+}

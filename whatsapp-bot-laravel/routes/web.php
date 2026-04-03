@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WhatsAppSessionController;
 use App\Http\Controllers\AuthController;
+use App\Models\WhatsAppSession;
+use Illuminate\Support\Facades\Auth;
 
 // Public routes
 Route::get('/', function () {
@@ -35,7 +37,18 @@ Route::middleware('web')->group(function () {
     // Protected routes - require authentication
     Route::middleware('auth')->group(function () {
         Route::get('/dashboard', function () {
-            return view('dashboard.index');
+            $user = Auth::user();
+            
+            // Check if user has any sessions in the database
+            $sessionCount = WhatsAppSession::forUser($user->id)->count();
+            
+            // Button should only show when there are NO sessions
+            $canCreateSession = $sessionCount === 0;
+            
+            return view('dashboard.index', [
+                'sessionCount' => $sessionCount,
+                'canCreateSession' => $canCreateSession
+            ]);
         })->name('dashboard');
         
         // Custom routes for QR code and reconnect (must come before resource route)

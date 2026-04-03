@@ -2,7 +2,7 @@
  * Group Stats Command - Display group chat statistics
  */
 
-const { getStats } = require('../../src/utils/groupstats');
+const { getGroupStats } = require('../../src/utils/groupstats');
 
 module.exports = {
     name: 'groupstats',
@@ -16,23 +16,24 @@ module.exports = {
         const { from } = context;
         
         try {
-            const stats = getStats(from);
+            const stats = getGroupStats(from);
 
-            if (!stats) {
+            if (!stats || !stats.members) {
                 return await sock.sendMessage(from, { 
                     text: '📊 No activity recorded today.' 
                 });
             }
 
-            const { total, users } = stats;
+            const total = stats.totalMessages || 0;
+            const users = stats.members || {};
 
             // top members
             const sortedUsers = Object.entries(users)
-                .sort((a, b) => b[1] - a[1])
+                .sort((a, b) => b[1].messages - a[1].messages)
                 .slice(0, 5);
 
             let topText = sortedUsers.length
-                ? sortedUsers.map(([id, count], i) => `${i + 1}) @${id.split('@')[0]} — ${count} msgs`).join('\n')
+                ? sortedUsers.map(([id, data], i) => `${i + 1}) @${id.split('@')[0]} — ${data.messages} msgs`).join('\n')
                 : 'No active users yet.';
 
             const text = `
@@ -48,7 +49,7 @@ Type .myactivity to see your stats.
 
             await sock.sendMessage(from, {
                 text,
-                mentions: sortedUsers.map(u => u[0])
+                mentions: sortedUsers.map(([id]) => id)
             }, { quoted: msg });
 
         } catch (err) {

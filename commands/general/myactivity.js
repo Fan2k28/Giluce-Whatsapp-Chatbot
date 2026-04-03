@@ -2,7 +2,7 @@
  * My Activity Command - Check user's activity stats for today
  */
 
-const { getStats } = require('../../src/utils/groupstats');
+const { getGroupStats } = require('../../src/utils/groupstats');
 
 module.exports = {
     name: 'myactivity',
@@ -16,7 +16,7 @@ module.exports = {
         const { from, sender } = context;
         
         try {
-            const stats = getStats(from);
+            const stats = getGroupStats(from);
 
             if (!stats || !stats.users || !stats.users[sender]) {
                 return await sock.sendMessage(from, { 
@@ -24,13 +24,13 @@ module.exports = {
                 });
             }
 
-            const userCount = stats.users[sender];
-            const totalMessages = stats.total;
+            const userCount = stats.members[sender].messages;
+            const totalMessages = stats.totalMessages;
             const percentage = ((userCount / totalMessages) * 100).toFixed(1);
 
             // Calculate rank
-            const sortedUsers = Object.entries(stats.users)
-                .sort((a, b) => b[1] - a[1]);
+            const sortedUsers = Object.entries(stats.members)
+                .sort((a, b) => b[1].messages - a[1].messages);
             
             const rank = sortedUsers.findIndex(([id]) => id === sender) + 1;
 

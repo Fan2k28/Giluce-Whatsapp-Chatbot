@@ -105,6 +105,11 @@ module.exports = {
 │ ├ .tagall - Mentionner tous
 │ └ .antilink - Anti-lien
 │
+│ 🤖 Automation
+│ ├ .autoreply - Auto-reply
+│ ├ .schedule - Planifier msg
+│ └ .reminder - Rappel
+│
 │ 👑 Owner
 │ ├ .broadcast - Diffuser
 │ ├ .block - Bloquer

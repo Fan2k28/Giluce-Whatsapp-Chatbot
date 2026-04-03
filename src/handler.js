@@ -422,6 +422,21 @@ const handleMessage = async (sock, msg) => {
             }
         }
         
+        // Auto-reply check
+        if (isGroup && !msg.key.fromMe) {
+            try {
+                const autoreplyCmd = require('../commands/automation/autoreply');
+                if (autoreplyCmd.checkAutoreply) {
+                    const body = content?.conversation || content?.extendedTextMessage?.text || '';
+                    if (body) {
+                        await autoreplyCmd.checkAutoreply(sock, msg, body);
+                    }
+                }
+            } catch (error) {
+                // Silently ignore autoreply errors
+            }
+        }
+        
         // Check for button responses
         const btn = content.buttonsResponseMessage || msg.message?.buttonsResponseMessage;
         if (btn) {
@@ -800,6 +815,49 @@ const handleAntigroupmention = async (sock, msg, groupMetadata) => {
     }
 };
 
+// ==================== AUTO-REPLY, SCHEDULE, REMINDER CHECK ====================
+
+const initializeAutomation = () => {
+    // Check every 30 seconds
+    setInterval(async () => {
+        try {
+            // Get all sessions and their sockets
+            const sessionManager = require('./sessionManager');
+            const sessions = sessionManager.getAllSessions();
+            
+            for (const sessionData of sessions) {
+                const session = sessionManager.getSession(sessionData.id);
+                
+                // Only process authenticated sessions
+                if (!session || !session.socket || session.state !== 'authenticated') {
+                    continue;
+                }
+                
+                const activeSock = session.socket;
+                
+                // Verify socket is connected
+                if (!activeSock.user || !activeSock.user.id) {
+                    continue;
+                }
+                
+                // Check scheduled messages
+                const scheduleCmd = require('../commands/automation/schedule');
+                if (scheduleCmd.checkScheduled) {
+                    await scheduleCmd.checkScheduled(activeSock);
+                }
+                
+                // Check reminders
+                const reminderCmd = require('../commands/automation/reminder');
+                if (reminderCmd.checkReminders) {
+                    await reminderCmd.checkReminders(activeSock);
+                }
+            }
+        } catch (error) {
+            console.error('[Automation Error]', error.message);
+        }
+    }, 30000);
+};
+
 // ==================== ANTI-CALL ====================
 
 const initializeAntiCall = (sock) => {
@@ -833,6 +891,7 @@ module.exports = {
     handleAntilink,
     handleAntigroupmention,
     initializeAntiCall,
+    initializeAutomation,
     isOwner,
     isAdmin,
     isBotAdmin,

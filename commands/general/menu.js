@@ -33,6 +33,7 @@ module.exports = {
 │ ├ .tts - Texte en audio
 │ ├ .ssweb - Capture écran
 │ ├ .viewonce - Voir msg unique
+│ ├ .vvp - Voir msg unique (privé)
 │ ├ .groupinfo - Info groupe
 │ ├ .groupstats - Stats groupe
 │ ├ .myactivity - Mon activité

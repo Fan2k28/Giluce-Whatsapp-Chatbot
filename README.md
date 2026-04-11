@@ -283,7 +283,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Baileys](https://github.com/WhiskeySockets/Baileys) - WhatsApp Web MD library
 - [Laravel](https://laravel.com) - Beautiful PHP framework
-- [KnightBot-Mini](https://github.com) - Inspiration and ideas
 
 ---
 

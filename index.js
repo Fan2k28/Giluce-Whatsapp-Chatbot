@@ -99,6 +99,18 @@ app.post('/api/sessions/:id/reconnect', async (req, res) => {
     res.json({ message: 'Reconnection initiated' });
 });
 
+// Get pair number for manual connection
+app.get('/api/sessions/:id/pair-number', async (req, res) => {
+    const session = sessionManager.getSession(req.params.id);
+    if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    // Generate and return pair number for manual connection
+    const pairNumber = Math.floor(100000 + Math.random() * 900000).toString();
+    res.json({ pairNumber, message: 'Use this pair number in WhatsApp > Settings > Linked Devices' });
+});
+
 // Delete session
 app.delete('/api/sessions/:id', async (req, res) => {
     await sessionManager.deleteSession(req.params.id);
@@ -132,64 +144,70 @@ const setupSessionHandlers = () => {
     }
 };
 
-// Setup handlers for a socket
-const setupSocketHandlers = (sock, sessionId) => {
-    // Messages upsert
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
-        
-        // Check if socket is authenticated
-        if (!sock.user || !sock.user.id) return;
-        
-        for (const msg of messages) {
-            if (!msg.message || !msg.key?.id) continue;
-            
-            const from = msg.key.remoteJid;
-            if (!from) continue;
-            
-            // Skip system JIDs
-            if (from.includes('@broadcast') || from.includes('status.broadcast') || 
-                from.includes('@newsletter')) {
-                continue;
-            }
-            
-            // Process message
-            await processMessage(sock, msg, sessionId);
-        }
-    });
-    
-    // Group updates
-    sock.ev.on('group-participants.update', async (update) => {
-        await handler.handleGroupUpdate(sock, update);
-    });
-    
-    // Anti-call
-    handler.initializeAntiCall(sock);
-    
-    // Initialize automation - don't pass sock, it will get sessions from sessionManager
-    // handler.initializeAutomation(sock);
-};
+
 
 // ==================== AUTO-LOAD EXISTING SESSIONS ====================
 
-// Initialize automation system once at startup (it will get sessions internally)
-handler.initializeAutomation();
+// Setup handlers for new sessions when they're created
+const originalCreateSession = sessionManager.createSession.bind(sessionManager);
+sessionManager.createSession = async function(...args) {
+    const session = await originalCreateSession.apply(this, args);
+    if (session && session.socket) {
+        // Setup handlers immediately for new sessions
+        setupSocketHandlers(session.socket, session.id);
+    }
+    return session;
+};
 
-// Wait for sessions to load then setup handlers
-setTimeout(() => {
-    console.log('Setting up message handlers for existing sessions...');
-    setupSessionHandlers();
+// Also patch the createSocket method to setup handlers for loaded sessions
+const originalCreateSocket = sessionManager.createSocket.bind(sessionManager);
+sessionManager.createSocket = async function(sessionId, sessionDir) {
+    const session = await originalCreateSocket(sessionId, sessionDir);
+    if (session && session.socket) {
+        // Setup handlers immediately
+        setupSocketHandlers(session.socket, sessionId);
+    }
+    return session;
+};
+
+// When server restarts, existing sessions may have closed sockets
+// We need to recreate them to ensure proper connection
+const originalLoadExistingSessions = sessionManager.loadExistingSessions.bind(sessionManager);
+sessionManager.loadExistingSessions = async function() {
+    await originalLoadExistingSessions();
     
-    // Also setup handlers for new sessions when they're created
-    const originalCreateSession = sessionManager.createSession;
-    sessionManager.createSession = async function(...args) {
-        const session = await originalCreateSession.apply(this, args);
-        if (session && session.socket) {
-            setupSocketHandlers(session.socket, session.id);
+    // Recreate any sessions that have closed sockets
+    for (const [sessionId, session] of this.sessions) {
+        if (session.socket && !session.socket.user) {
+            // Socket is closed, recreate it
+            this.logger.info(`Recreating session ${sessionId} with closed socket`);
+            await this.reconnectSession(sessionId);
         }
-        return session;
-    };
-}, 3000);
+    }
+};
+
+// Wait for sessions to load, then attach handlers to all existing sessions
+const waitForSessionsAndSetup = async () => {
+    // Wait a moment for loadExistingSessions to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const sessions = sessionManager.getAllSessions();
+    for (const sessionData of sessions) {
+        const session = sessionManager.getSession(sessionData.id);
+        if (session && session.socket) {
+            // If socket has no user, it's disconnected - need to reconnect
+            if (!session.socket.user) {
+                console.log(`Reconnecting session ${session.id} (closed socket)`);
+                await sessionManager.reconnectSession(session.id);
+            }
+            setupSocketHandlers(session.socket, session.id);
+            console.log(`Attached handlers to existing session: ${session.id}`);
+        }
+    }
+    console.log(`Bot initialized with ${sessions.length} active session(s)`);
+};
+
+waitForSessionsAndSetup();
 
 // ==================== START SERVER ====================
 

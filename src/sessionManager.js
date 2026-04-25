@@ -136,13 +136,6 @@ class SessionManager {
             }
         });
 
-        // Setup message handler
-        sock.ev.on('messages.upsert', async ({ messages }) => {
-            sessionInfo.lastSeen = new Date();
-            // Store reference to session for handler
-            sock.sessionId = sessionId;
-        });
-
         sock.ev.on('error', (err) => {
             this.logger.error(`Session ${sessionId}: Error - ${err.message}`);
         });

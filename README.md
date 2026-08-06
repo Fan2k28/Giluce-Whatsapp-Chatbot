@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/github/stars/giluce/whatsapp-bot?color=yellow" alt="Stars">
 </p>
 
+
 > A powerful WhatsApp chatbot built with Baileys MD, featuring multi-session support, AI integration, and a beautiful Laravel dashboard for complete management.
 
 ---

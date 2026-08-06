@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghostroar Digital - Connexion WhatsApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+
+        h1 {
+            color: #075e54;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status.idle {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .status.qr {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffc107;
+        }
+
+        .status.paired {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .status.connecting {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .qr-container {
+            margin: 30px auto;
+            padding: 20px;
+            background: white;
+            border: 3px solid #25D366;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2);
+        }
+
+        .qr-container img {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .qr-placeholder {
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 10px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        }
+
+        .btn:hover {
+            background: #128c7e;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #25D366;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info ol {
+            text-align: left;
+            margin-top: 10px;
+            margin-left: 20px;
+        }
+
+        .info li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><img src="./src/STRAT.png" height="70" alt="test"></div>
+        <h1>Lastrategie Solution</h1>
+        <p class="subtitle">Bot WhatsApp - Connexion</p>
+
+        <div id="status" class="status idle">
+            <span id="statusText">En attente de connexion...</span>
+        </div>
+
+        <div id="qrSection" class="hidden">
+            <div class="qr-container">
+                <div id="qrCode"></div>
+            </div>
+        </div>
+
+        <div id="loadingSection" class="hidden">
+            <div class="spinner"></div>
+            <p>Connexion en cours...</p>
+        </div>
+
+        <button id="connectBtn" class="btn">Se connecter</button>
+
+        <div class="info">
+            <strong>Comment se connecter :</strong>
+            <ol>
+                <li>Cliquez sur "Se connecter"</li>
+                <li>Scannez le QR code avec WhatsApp</li>
+                <li>Confirmez la connexion sur votre téléphone</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const statusTextEl = document.getElementById('statusText');
+        const qrSection = document.getElementById('qrSection');
+        const qrCodeEl = document.getElementById('qrCode');
+        const loadingSection = document.getElementById('loadingSection');
+        const connectBtn = document.getElementById('connectBtn');
+
+        function updateStatus(status, message) {
+            statusEl.className = 'status ' + status;
+            statusTextEl.textContent = message;
+
+            if (status === 'qr') {
+                qrSection.classList.remove('hidden');
+                loadingSection.classList.add('hidden');
+                connectBtn.classList.add('hidden');
+            } else if (status === 'connecting' || status === 'paired') {
+                qrSection.classList.add('hidden');
+                loadingSection.classList.remove('hidden');
+                connectBtn.classList.add('hidden');
+            } else if (status === 'connected') {
+                qrSection.classList.add('hidden');
+                loadingSection.classList.add('hidden');
+                connectBtn.classList.add('hidden');
+            } else {
+                qrSection.classList.add('hidden');
+                loadingSection.classList.add('hidden');
+                connectBtn.classList.remove('hidden');
+            }
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ qr: true })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    updateStatus('connecting', 'Génération du QR code...');
+                }
+            } catch (e) {
+                updateStatus('error', 'Erreur lors de la connexion');
+            }
+        });
+
+        const evtSource = new EventSource('/events');
+        evtSource.addEventListener('message', (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.qrData) {
+                    qrCodeEl.innerHTML = '<img src="' + data.qrData + '" alt="QR Code" />';
+                }
+                if (data.connectionStatus) {
+                    updateStatus(data.connectionStatus, data.statusMessage || '');
+                }
+            } catch {}
+        });
+        evtSource.onerror = () => {
+            updateStatus('error', 'Connexion perdue. Actualisez la page.');
+        };
+    </script>
+</body>
+</html>

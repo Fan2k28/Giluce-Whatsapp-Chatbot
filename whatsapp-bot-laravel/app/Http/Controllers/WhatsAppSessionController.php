@@ -206,6 +206,30 @@ class WhatsAppSessionController extends Controller
         ]);
     }
 
+    public function getPairNumber()
+    {
+        $user = Auth::user();
+        
+        // For simplicity, we'll create a temporary session ID
+        // In a real implementation, you might want to use the user's latest session
+        $sessionId = 'temp_' . $user->id . '_' . time();
+        
+        $response = Http::get($this->nodeApiUrl . '/sessions/' . $sessionId . '/pair-number');
+        
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'pair_number' => $response->json()['pairNumber'] ?? null,
+                'message' => $response->json()['message'] ?? 'Use this pair number in WhatsApp > Settings > Linked Devices'
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to get pair number'
+        ], 500);
+    }
+
     public function destroy($id)
     {
         $user = Auth::user();

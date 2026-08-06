@@ -5,7 +5,7 @@
 
 module.exports = {
     // Bot Owner Configuration
-    ownerNumber: ['237698954932','237671624397'], // Add your number without + or spaces
+    ownerNumber: ['237671624397'], // Add your number without + or spaces
     ownerName: ['Giluce Bot', 'Admin'],
     
     // Bot Configuration
@@ -13,7 +13,7 @@ module.exports = {
     prefix: '.',
     sessionName: 'session',
     sessionID: process.env.SESSION_ID || '',
-    newsletterJid: '120363161513685998@newsletter',
+    newsletterJid: '120363161513685998@newsletter', 
     
     // Sticker Configuration
     packname: 'Giluce Bot',
@@ -26,6 +26,7 @@ module.exports = {
     autoSticker: false,
     autoReact: false,
     autoReactMode: 'all', // set bot or all via cmd
+    antiviewonce: true,
     
     // Group Settings Defaults
     defaultGroupSettings: {
@@ -34,7 +35,7 @@ module.exports = {
         antitag: false,
         antitagAction: 'delete',
         antiall: false,
-        antiviewonce: false,
+        antiviewonce: true,
         antibot: false,
         anticall: false,
         antigroupmention: false,

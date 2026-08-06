@@ -16,6 +16,7 @@ module.exports = {
         
         try {
             const chatId = msg.key.remoteJid;
+            const ownerJid = `${config.ownerNumber[0]}@s.whatsapp.net`;
 
             // Try to get contextInfo from different message types
             const ctx = msg.message?.extendedTextMessage?.contextInfo
@@ -26,7 +27,7 @@ module.exports = {
 
             if (!ctx?.quotedMessage || !ctx?.stanzaId) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '🗑️ Reply to a *view-once* message to reveal it.' },
                     { quoted: msg }
                 );
@@ -46,7 +47,7 @@ module.exports = {
 
             if (!hasViewOnce) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '❌ This is not a view-once message!' },
                     { quoted: msg }
                 );
@@ -81,7 +82,7 @@ module.exports = {
 
             if (!actualMsg || !mtype) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '❌ Unsupported view-once message type.' },
                     { quoted: msg }
                 );
@@ -108,7 +109,7 @@ module.exports = {
 
             if (/video/.test(mtype)) {
                 await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     {
                         video: buffer,
                         caption,
@@ -118,7 +119,7 @@ module.exports = {
                 );
             } else if (/image/.test(mtype)) {
                 await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     {
                         image: buffer,
                         caption,
@@ -128,7 +129,7 @@ module.exports = {
                 );
             } else if (/audio/.test(mtype)) {
                 await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     {
                         audio: buffer,
                         ptt: true,
@@ -140,7 +141,7 @@ module.exports = {
         } catch (error) {
             console.error('Error in viewonce command:', error);
             await sock.sendMessage(
-                msg.key.remoteJid,
+                ownerJid,
                 {
                     text: '❌ Error processing view-once message: ' + (error.message || 'Unknown error')
                 },

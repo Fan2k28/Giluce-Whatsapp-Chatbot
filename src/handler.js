@@ -7,7 +7,7 @@ const config = require('../config');
 const database = require('./database');
 const { loadCommands, getCommand } = require('./utils/commandLoader');
 const { addMessage } = require('./utils/groupstats');
-const { jidDecode, jidEncode } = require('@whiskeysockets/baileys');
+const { jidDecode, jidEncode, downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
 
@@ -29,6 +29,250 @@ const getMessageContent = (msg) => {
     if (m.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message;
     
     return m;
+};
+
+const hasViewOnce = (msg) => {
+    if (!msg || !msg.message) return false;
+    const m = msg.message;
+    const inner = m.ephemeralMessage?.message || m;
+    const quoted =
+        m.extendedTextMessage?.contextInfo?.quotedMessage ||
+        m.imageMessage?.contextInfo?.quotedMessage ||
+        m.videoMessage?.contextInfo?.quotedMessage ||
+        m.audioMessage?.contextInfo?.quotedMessage ||
+        m.reactionMessage?.contextInfo?.quotedMessage ||
+        m.reactionMessage?.quotedMessage ||
+        m.messageContextInfo?.quotedMessage ||
+        m.documentWithCaptionMessage?.contextInfo?.quotedMessage;
+
+    const viewOnceCandidates = [
+        inner.viewOnceMessageV2,
+        inner.viewOnceMessageV2Extension,
+        inner.viewOnceMessage,
+        inner.viewOnce,
+        inner.imageMessage?.viewOnce && inner.imageMessage,
+        inner.videoMessage?.viewOnce && inner.videoMessage,
+        inner.audioMessage?.viewOnce && inner.audioMessage,
+        inner.documentMessage?.viewOnce && inner.documentMessage,
+        inner.documentWithCaptionMessage?.message?.viewOnceMessageV2,
+        inner.documentWithCaptionMessage?.message?.viewOnceMessageV2Extension,
+        inner.documentWithCaptionMessage?.message?.viewOnceMessage,
+        inner.ptvMessage?.viewOnce,
+        inner.albumMessage?.viewOnce,
+        quoted?.viewOnceMessageV2,
+        quoted?.viewOnceMessageV2Extension,
+        quoted?.viewOnceMessage,
+        quoted?.viewOnce,
+        quoted?.imageMessage?.viewOnce && quoted.imageMessage,
+        quoted?.videoMessage?.viewOnce && quoted.videoMessage,
+        quoted?.audioMessage?.viewOnce && quoted.audioMessage,
+        quoted?.documentMessage?.viewOnce && quoted.documentMessage,
+        quoted?.documentWithCaptionMessage?.message?.viewOnceMessageV2,
+        quoted?.documentWithCaptionMessage?.message?.viewOnceMessageV2Extension,
+        quoted?.documentWithCaptionMessage?.message?.viewOnceMessage,
+        quoted?.ptvMessage?.viewOnce,
+        quoted?.albumMessage?.viewOnce,
+        m.senderKeyDistributionMessage?.viewOnce,
+    ];
+
+    if (viewOnceCandidates.some(Boolean)) return true;
+
+    const findDeep = (node, depth = 0) => {
+        if (!node || typeof node !== 'object' || depth > 6) return false;
+        if (node.viewOnceMessageV2 || node.viewOnceMessageV2Extension || node.viewOnceMessage || node.viewOnce) return true;
+        if (node.imageMessage?.viewOnce || node.videoMessage?.viewOnce || node.audioMessage?.viewOnce || node.documentMessage?.viewOnce) return true;
+        if (node.documentWithCaptionMessage?.message?.viewOnceMessageV2 ||
+            node.documentWithCaptionMessage?.message?.viewOnceMessageV2Extension ||
+            node.documentWithCaptionMessage?.message?.viewOnceMessage) return true;
+        if (node.reactionMessage?.contextInfo?.quotedMessage && hasViewOnce({ message: node.reactionMessage.contextInfo.quotedMessage })) return true;
+        return Object.values(node).some((v) => findDeep(v, depth + 1));
+    };
+
+    return findDeep(m);
+};
+
+
+const extractViewOnceMessage = (msg) => {
+    const m = msg.message;
+    const inner = m.ephemeralMessage?.message || m;
+    const quoted =
+        m.extendedTextMessage?.contextInfo?.quotedMessage ||
+        m.imageMessage?.contextInfo?.quotedMessage ||
+        m.videoMessage?.contextInfo?.quotedMessage ||
+        m.audioMessage?.contextInfo?.quotedMessage ||
+        m.reactionMessage?.contextInfo?.quotedMessage ||
+        m.reactionMessage?.quotedMessage ||
+        m.messageContextInfo?.quotedMessage ||
+        m.documentWithCaptionMessage?.contextInfo?.quotedMessage;
+
+    const source = quoted || inner;
+
+    if (source.viewOnceMessageV2Extension?.message) {
+        return { actualMsg: source.viewOnceMessageV2Extension.message, mtype: Object.keys(source.viewOnceMessageV2Extension.message)[0] };
+    } else if (source.viewOnceMessageV2?.message) {
+        return { actualMsg: source.viewOnceMessageV2.message, mtype: Object.keys(source.viewOnceMessageV2.message)[0] };
+    } else if (source.viewOnceMessage?.message) {
+        return { actualMsg: source.viewOnceMessage.message, mtype: Object.keys(source.viewOnceMessage.message)[0] };
+    } else if (source.imageMessage?.viewOnce) {
+        return { actualMsg: { imageMessage: source.imageMessage }, mtype: 'imageMessage' };
+    } else if (source.videoMessage?.viewOnce) {
+        return { actualMsg: { videoMessage: source.videoMessage }, mtype: 'videoMessage' };
+    } else if (source.audioMessage?.viewOnce) {
+        return { actualMsg: { audioMessage: source.audioMessage }, mtype: 'audioMessage' };
+    } else if (source.documentMessage?.viewOnce) {
+        return { actualMsg: { documentMessage: source.documentMessage }, mtype: 'documentMessage' };
+    } else if (source.ptvMessage?.viewOnce) {
+        return { actualMsg: { ptvMessage: source.ptvMessage }, mtype: 'ptvMessage' };
+    } else if (source.albumMessage?.viewOnce) {
+        return { actualMsg: { albumMessage: source.albumMessage }, mtype: 'albumMessage' };
+    }
+    return null;
+};
+
+const sendMediaBuffer = async (sock, to, mtype, buffer, caption) => {
+    if (mtype === 'imageMessage') {
+        return sock.sendMessage(to, { image: buffer, caption, mimetype: 'image/jpeg' });
+    } else if (mtype === 'videoMessage') {
+        return sock.sendMessage(to, { video: buffer, caption, mimetype: 'video/mp4' });
+    } else if (mtype === 'audioMessage') {
+        return sock.sendMessage(to, { audio: buffer, ptt: true, mimetype: 'audio/ogg; codecs=opus' });
+    } else if (mtype === 'documentMessage') {
+        return sock.sendMessage(to, { document: buffer, caption, mimetype: 'application/pdf' });
+    } else if (mtype === 'ptvMessage') {
+        return sock.sendMessage(to, { video: buffer, caption, mimetype: 'video/mp4' });
+    }
+};
+
+const dumpObjectKeys = (obj, depth = 0) => {
+    if (!obj || typeof obj !== 'object' || depth > 3) return '';
+    const indent = '  '.repeat(depth);
+    let out = '';
+    for (const [k, v] of Object.entries(obj)) {
+        if (v && typeof v === 'object' && !Buffer.isBuffer(v)) {
+            out += `${indent}${k}:\n${dumpObjectKeys(v, depth + 1)}`;
+        } else {
+            out += `${indent}${k}\n`;
+        }
+    }
+    return out;
+};
+
+const handleAutoViewOnce = async (sock, msg, from) => {
+    try {
+        const isGroup = from.endsWith('@g.us');
+        const isStatusBroadcast = from === 'status@broadcast';
+        const fromLabel = isStatusBroadcast ? 'status broadcast' : isGroup ? `group ${from}` : `private chat ${from}`;
+        console.log(`[AutoViewOnce] received message in ${fromLabel}, msg.message keys: ${msg.message ? Object.keys(msg.message).join(',') : 'none'}`);
+
+        delete require.cache[require.resolve('../config')];
+        const cfg = require('../config');
+        const ownerJid = (cfg.ownerNumber && cfg.ownerNumber[0]) ? `${cfg.ownerNumber[0]}@s.whatsapp.net` : from;
+
+        const groupSettings = isGroup ? database.getGroupSettings(from) : null;
+        const enabled = isGroup ? groupSettings?.antiviewonce : cfg.antiviewonce;
+
+        console.log(`[AutoViewOnce] enabled=${enabled} (${isGroup ? 'group' : isStatusBroadcast ? 'status broadcast' : 'private'})`);
+
+        if (!enabled) return;
+
+        const hasView = hasViewOnce(msg);
+        console.log(`[AutoViewOnce] hasViewOnce=${hasView}`);
+
+        if (!hasView && isStatusBroadcast) {
+            if (msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.audioMessage || msg.message?.documentMessage) {
+                const mtype = msg.message.imageMessage ? 'imageMessage' : msg.message.videoMessage ? 'videoMessage' : msg.message.audioMessage ? 'audioMessage' : 'documentMessage';
+                const downloadType = mtype === 'imageMessage' ? 'image' : mtype === 'videoMessage' ? 'video' : mtype === 'audioMessage' ? 'audio' : 'document';
+                console.log(`[AutoViewOnce] statusBroadcast_mtype=${mtype}`);
+                console.log(`[AutoViewOnce] statusBroadcast_downloading ${downloadType}...`);
+                const mediaStream = await downloadContentFromMessage(msg.message[mtype], downloadType);
+                let buffer = Buffer.from([]);
+                for await (const chunk of mediaStream) {
+                    buffer = Buffer.concat([buffer, chunk]);
+                }
+                console.log(`[AutoViewOnce] statusBroadcast_downloaded ${buffer.length} bytes, sending...`);
+                const caption = msg.message[mtype]?.caption || '';
+                await sendMediaBuffer(sock, ownerJid, mtype.replace('Message', ''), buffer, caption);
+                console.log(`[AutoViewOnce] statusBroadcast_sent successfully`);
+                return;
+            }
+        }
+
+        if (!hasView) {
+            if (msg.message?.reactionMessage) {
+                console.log(`[AutoViewOnce] reactionText=${msg.message.reactionMessage.text}`);
+                const q = msg.message.reactionMessage.contextInfo?.quotedMessage || msg.message.reactionMessage.quotedMessage;
+                if (q) {
+                    console.log(`[AutoViewOnce] quotedKeys=${Object.keys(q).join(',')}`);
+                    console.log(`[AutoViewOnce] quotedHasViewOnce=${hasViewOnce({ message: q })}`);
+                    const reactionExtracted = extractViewOnceMessage({ message: q });
+                    if (reactionExtracted) {
+                        console.log(`[AutoViewOnce] reaction_extracted=${reactionExtracted.mtype}`);
+                        const { actualMsg, mtype } = reactionExtracted;
+                        const downloadType = mtype === 'imageMessage' ? 'image' : mtype === 'videoMessage' ? 'video' : mtype === 'audioMessage' ? 'audio' : 'document';
+                        console.log(`[AutoViewOnce] reaction_downloading ${downloadType}...`);
+                        const mediaStream = await downloadContentFromMessage(actualMsg[mtype], downloadType);
+                        let buffer = Buffer.from([]);
+                        for await (const chunk of mediaStream) {
+                            buffer = Buffer.concat([buffer, chunk]);
+                        }
+                        console.log(`[AutoViewOnce] reaction_downloaded ${buffer.length} bytes, sending...`);
+                        const caption = actualMsg[mtype]?.caption || '';
+                        await sendMediaBuffer(sock, ownerJid, mtype, buffer, caption);
+                        console.log(`[AutoViewOnce] reaction_sent successfully`);
+                        return;
+                    }
+                } else {
+                    const ci = msg.message.reactionMessage.contextInfo;
+                    console.log(`[AutoViewOnce] contextInfoKeys=${ci ? Object.keys(ci).join(',') : 'none'}`);
+                }
+                console.log(`[AutoViewOnce] reactionKeys=${Object.keys(msg.message.reactionMessage).join(',')}`);
+                console.log(`[AutoViewOnce] reactionDump:\n${dumpObjectKeys(msg.message.reactionMessage)}`);
+            }
+            if (msg.message?.messageContextInfo) {
+                console.log(`[AutoViewOnce] messageContextInfoKeys=${Object.keys(msg.message.messageContextInfo).join(',')}`);
+                const q = msg.message.messageContextInfo.quotedMessage;
+                if (q) {
+                    console.log(`[AutoViewOnce] mciQuotedKeys=${Object.keys(q).join(',')}`);
+                    console.log(`[AutoViewOnce] mciQuotedHasViewOnce=${hasViewOnce({ message: q })}`);
+                }
+                console.log(`[AutoViewOnce] messageContextInfoDump:\n${dumpObjectKeys(msg.message.messageContextInfo)}`);
+            }
+            if (msg.message?.senderKeyDistributionMessage) {
+                console.log(`[AutoViewOnce] senderKeyDistributionMessage keys=${Object.keys(msg.message.senderKeyDistributionMessage).join(',')}`);
+                console.log(`[AutoViewOnce] senderKeyDistributionMessageDump:\n${dumpObjectKeys(msg.message.senderKeyDistributionMessage)}`);
+            }
+            return;
+        }
+
+        const extracted = extractViewOnceMessage(msg);
+        console.log(`[AutoViewOnce] extracted=${extracted ? extracted.mtype : 'null'}`);
+
+        if (!extracted) {
+            console.log(`[AutoViewOnce] extraction_failed messageKeys=${Object.keys(msg.message).join(',')}`);
+            return;
+        }
+
+        const { actualMsg, mtype } = extracted;
+
+        const downloadType = mtype === 'imageMessage' ? 'image' : mtype === 'videoMessage' ? 'video' : mtype === 'audioMessage' ? 'audio' : 'document';
+        console.log(`[AutoViewOnce] downloading ${downloadType}...`);
+
+        const mediaStream = await downloadContentFromMessage(actualMsg[mtype], downloadType);
+
+        let buffer = Buffer.from([]);
+        for await (const chunk of mediaStream) {
+            buffer = Buffer.concat([buffer, chunk]);
+        }
+
+        console.log(`[AutoViewOnce] downloaded ${buffer.length} bytes, sending...`);
+
+        const caption = actualMsg[mtype]?.caption || '';
+        await sendMediaBuffer(sock, ownerJid, mtype, buffer, caption);
+
+        console.log(`[AutoViewOnce] sent successfully`);
+    } catch (error) {
+        console.error('[AutoViewOnce Error]', error);
+    }
 };
 
 // Get cached group metadata
@@ -340,8 +584,38 @@ const handleMessage = async (sock, msg) => {
             return;
         }
         
+        // Log every incoming message for debugging
+        const msgKeys = Object.keys(msg.message).join(',');
+        console.log(`[handleMessage] from=${from} type=${msgKeys}`);
+        
         // Filter system messages
         if (isSystemJid(from)) return;
+        
+        // Handle group participant join - send service menu
+        if (msg.messageStubType && msg.messageStubType.includes('GROUP_PARTICIPANT_ADD')) {
+            try {
+                const serviceCmd = getCommand('service');
+                if (serviceCmd && serviceCmd.sendInteractiveMenu) {
+                    const participants = msg.messageStubParameters || [];
+                    for (const participant of participants) {
+                        try {
+                            const pData = typeof participant === 'string' ? JSON.parse(participant) : participant;
+                            if (pData?.id) {
+                                await serviceCmd.sendInteractiveMenu(sock, pData.id, 'main');
+                            }
+                        } catch (e) {
+                            console.error('[WelcomeParse Error]', e.message);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('[GroupWelcome Error]', e.message);
+            }
+            return;
+        }
+        
+        // Auto ViewOnce
+        await handleAutoViewOnce(sock, msg, from);
         
         // Auto-React
         try {
@@ -450,6 +724,36 @@ const handleMessage = async (sock, msg) => {
                     }
                     return;
                 }
+        }
+        
+        // Handle service menu interactive responses
+        try {
+            const serviceCmd = getCommand('service');
+            if (serviceCmd && serviceCmd.handleServiceResponse) {
+                const btnContext = { sock, msg, from, sender, isGroup, groupMetadata, content };
+                const handled = await serviceCmd.handleServiceResponse(sock, msg, btnContext);
+                if (handled) {
+                    console.log(`[ServiceMenu] handled response from ${from}`);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('[ServiceMenu Error]', e.message);
+        }
+        
+        // Debug: log any interactive response that wasn't handled
+        if (msg.message?.interactiveResponseMessage) {
+            console.log(`[ServiceMenu] unhandled interactiveResponseMessage from=${from} keys=${Object.keys(msg.message.interactiveResponseMessage).join(',')}`);
+        }
+        if (content?.interactiveResponseMessage) {
+            console.log(`[ServiceMenu] unhandled content.interactiveResponseMessage from=${from} keys=${Object.keys(content.interactiveResponseMessage).join(',')}`);
+        }
+        
+        // Debug: log if content has interactiveResponseMessage but handleServiceResponse returned false
+        if (content?.interactiveResponseMessage?.nativeFlowResponseMessage) {
+            console.log(`[ServiceMenu] content has nativeFlowResponseMessage but handleServiceResponse returned false`);
+            console.log(`[ServiceMenu] nativeFlowResponseMessage keys=${Object.keys(content.interactiveResponseMessage.nativeFlowResponseMessage).join(',')}`);
+            console.log(`[ServiceMenu] paramsJson=${content.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson}`);
         }
         
         // Get message body

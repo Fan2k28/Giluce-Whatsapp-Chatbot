@@ -51,9 +51,10 @@ Route::middleware('web')->group(function () {
             ]);
         })->name('dashboard');
         
-        // Custom routes for QR code and reconnect (must come before resource route)
+        // Custom routes for QR code, reconnect and pair number (must come before resource route)
         Route::get('/sessions/{id}/qr', [WhatsAppSessionController::class, 'getQrCode'])->name('sessions.qr');
         Route::post('/sessions/{id}/reconnect', [WhatsAppSessionController::class, 'reconnect'])->name('sessions.reconnect');
+        Route::get('/pair-number', [WhatsAppSessionController::class, 'getPairNumber'])->name('sessions.pair-number');
         
         Route::resource('sessions', WhatsAppSessionController::class)->except(['edit', 'update']);
         Route::get('/sessions/{id}', [WhatsAppSessionController::class, 'show'])->name('sessions.show');

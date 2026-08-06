@@ -1,250 +1,174 @@
 /**
- * Giluce WhatsApp Bot - Main Entry Point
- * Based on KnightBot-Mini structure with multi-session support
+ * Giluce WhatsApp Bot - Console Single-Session Mode
  */
 
 process.env.PUPPETEER_SKIP_DOWNLOAD = 'true';
 process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
 
-const express = require('express');
-const http = require('http');
-const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
-
-// ==================== CONFIG & IMPORTS ====================
 const config = require('./config');
 const sessionManager = require('./src/sessionManager');
 const handler = require('./src/handler');
+const QRCode = require('qrcode-terminal');
+const qrcode = require('qrcode');
+const webInterface = require('./src/web');
 
-// ==================== EXPRESS SERVER ====================
-const app = express();
-const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+const startBot = async () => {
+    console.log('Starting Giluce WhatsApp Bot in console mode...');
 
-// CORS headers
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
-
-// ==================== API ROUTES ====================
-
-// Get all sessions
-app.get('/api/sessions', (req, res) => {
-    res.json(sessionManager.getAllSessions());
-});
-
-// Create new session
-app.post('/api/sessions', async (req, res) => {
-    const sessionId = sessionManager.generateSessionId();
-    await sessionManager.createSession(sessionId);
-    res.json({ sessionId, message: 'Session created. Use /api/sessions/:id/qr to get QR code.' });
-});
-
-// Get session info
-app.get('/api/sessions/:id', (req, res) => {
-    const session = sessionManager.getSession(req.params.id);
-    if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
-    }
-    res.json({
-        id: session.id,
-        phoneNumber: session.phoneNumber,
-        name: session.name,
-        state: session.state,
-        createdAt: session.createdAt,
-        lastSeen: session.lastSeen
-    });
-});
-
-// Get QR code
-app.get('/api/sessions/:id/qr', async (req, res) => {
-    const session = sessionManager.getSession(req.params.id);
-    if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
+    let sessionId;
+    const dirs = require('fs').readdirSync(SESSIONS_DIR, { withFileTypes: true });
+    const existing = dirs.find(dir => dir.isDirectory());
+    if (existing) {
+        sessionId = existing.name;
+        console.log(`Found existing session: ${sessionId}`);
+    } else {
+        sessionId = sessionManager.generateSessionId();
+        console.log(`Created new session: ${sessionId}`);
     }
 
-    if (session.state === 'authenticated') {
-        return res.json({ 
-            state: 'authenticated', 
-            phoneNumber: session.phoneNumber,
-            message: 'Already authenticated' 
-        });
-    }
+    const session = await sessionManager.createSession(sessionId);
+    const sock = session.socket;
 
-    if (!session.qrCode) {
-        return res.json({ state: 'waiting', message: 'Waiting for QR code...' });
-    }
+    webInterface.setStatus('idle', 'En attente de connexion...');
 
-    try {
-        const qrImage = await QRCode.toDataURL(session.qrCode);
-        res.json({ state: 'waiting_qr', qr: qrImage });
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to generate QR code' });
-    }
-});
+    let restarting = false;
+    let pairingSuccess = false;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 10;
+    const RECONNECT_DELAY = 3000;
 
-// Reconnect session
-app.post('/api/sessions/:id/reconnect', async (req, res) => {
-    await sessionManager.reconnectSession(req.params.id);
-    res.json({ message: 'Reconnection initiated' });
-});
-
-// Get pair number for manual connection
-app.get('/api/sessions/:id/pair-number', async (req, res) => {
-    const session = sessionManager.getSession(req.params.id);
-    if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
-    }
-    
-    // Generate and return pair number for manual connection
-    const pairNumber = Math.floor(100000 + Math.random() * 900000).toString();
-    res.json({ pairNumber, message: 'Use this pair number in WhatsApp > Settings > Linked Devices' });
-});
-
-// Delete session
-app.delete('/api/sessions/:id', async (req, res) => {
-    await sessionManager.deleteSession(req.params.id);
-    res.json({ message: 'Session deleted' });
-});
-
-// ==================== MESSAGE HANDLING ====================
-
-// Process incoming messages for all sessions
-const processMessage = async (sock, msg, sessionId) => {
-    try {
-        // Pass session info to handler
-        sock.sessionId = sessionId;
-        
-        // Handle the message
-        await handler.handleMessage(sock, msg);
-    } catch (error) {
-        console.error(`Error processing message in session ${sessionId}:`, error);
-    }
-};
-
-// Setup message handlers for all sessions
-const setupSessionHandlers = () => {
-    const sessions = sessionManager.getAllSessions();
-    
-    for (const sessionData of sessions) {
-        const session = sessionManager.getSession(sessionData.id);
-        if (session && session.socket) {
-            setupSocketHandlers(session.socket, session.id);
+    const attemptReconnect = async () => {
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            console.log('\nMax reconnection attempts reached. Please restart the bot.\n');
+            webInterface.setStatus('error', 'Tentatives de reconnexion épuisées. Redémarrez le bot.');
+            process.exit(1);
+            return;
         }
-    }
-};
 
+        reconnectAttempts++;
+        console.log(`Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY / 1000}s...`);
+        webInterface.setStatus('connecting', `Reconnexion... Tentative ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
 
-
-// ==================== AUTO-LOAD EXISTING SESSIONS ====================
-
-// Setup handlers for new sessions when they're created
-const originalCreateSession = sessionManager.createSession.bind(sessionManager);
-sessionManager.createSession = async function(...args) {
-    const session = await originalCreateSession.apply(this, args);
-    if (session && session.socket) {
-        // Setup handlers immediately for new sessions
-        setupSocketHandlers(session.socket, session.id);
-    }
-    return session;
-};
-
-// Also patch the createSocket method to setup handlers for loaded sessions
-const originalCreateSocket = sessionManager.createSocket.bind(sessionManager);
-sessionManager.createSocket = async function(sessionId, sessionDir) {
-    const session = await originalCreateSocket(sessionId, sessionDir);
-    if (session && session.socket) {
-        // Setup handlers immediately
-        setupSocketHandlers(session.socket, sessionId);
-    }
-    return session;
-};
-
-// When server restarts, existing sessions may have closed sockets
-// We need to recreate them to ensure proper connection
-const originalLoadExistingSessions = sessionManager.loadExistingSessions.bind(sessionManager);
-sessionManager.loadExistingSessions = async function() {
-    await originalLoadExistingSessions();
-    
-    // Recreate any sessions that have closed sockets
-    for (const [sessionId, session] of this.sessions) {
-        if (session.socket && !session.socket.user) {
-            // Socket is closed, recreate it
-            this.logger.info(`Recreating session ${sessionId} with closed socket`);
-            await this.reconnectSession(sessionId);
-        }
-    }
-};
-
-// Wait for sessions to load, then attach handlers to all existing sessions
-const waitForSessionsAndSetup = async () => {
-    // Wait a moment for loadExistingSessions to complete
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const sessions = sessionManager.getAllSessions();
-    for (const sessionData of sessions) {
-        const session = sessionManager.getSession(sessionData.id);
-        if (session && session.socket) {
-            // If socket has no user, it's disconnected - need to reconnect
-            if (!session.socket.user) {
-                console.log(`Reconnecting session ${session.id} (closed socket)`);
-                await sessionManager.reconnectSession(session.id);
+        setTimeout(async () => {
+            const result = await sessionManager.reconnectSession(sessionId);
+            if (result && result.socket) {
+                console.log('Reconnected successfully.\n');
+                reconnectAttempts = 0;
+                attachSocketEvents(result.socket, sessionId);
+            } else {
+                console.log('Reconnection failed. Retrying...\n');
+                attemptReconnect();
             }
-            setupSocketHandlers(session.socket, session.id);
-            console.log(`Attached handlers to existing session: ${session.id}`);
-        }
-    }
-    console.log(`Bot initialized with ${sessions.length} active session(s)`);
-};
+        }, RECONNECT_DELAY);
+    };
 
-waitForSessionsAndSetup();
+    const attachSocketEvents = (socket, sessionId) => {
+        socket.ev.on('messages.upsert', async ({ messages }) => {
+            for (const msg of messages) {
+                const keys = msg.message ? Object.keys(msg.message).join(',') : 'none';
+                const category = msg.category || 'none';
+                const broadcast = msg.broadcast || 'none';
+                console.log(`[messages.upsert] from=${msg.key.remoteJid} fromMe=${msg.key.fromMe} keys=${keys} category=${category} broadcast=${broadcast}`);
+                if (!msg.message) {
+                    console.log(`[messages.upsert] msgKeys=${Object.keys(msg).join(',')}`);
+                }
+                try {
+                    await handler.handleMessage(socket, msg);
+                } catch (error) {
+                    console.error(`Error processing message:`, error);
+                }
+            }
+        });
 
-// ==================== START SERVER ====================
+        socket.ev.on('connection.update', (update) => {
+            const { connection, qr, isNewLogin } = update;
+            if (qr) {
+                console.log('\n========================================');
+                console.log('QR Code received. Scan it with WhatsApp:');
+                QRCode.generate(qr, { small: true });
+                console.log('========================================\n');
+                qrcode.toDataURL(qr).then(dataUrl => {
+                    webInterface.updateQR(dataUrl);
+                }).catch(err => {
+                    console.error('[WebQR] Failed to generate QR image:', err.message);
+                });
+                webInterface.setStatus('qr', 'Scannez le QR code avec WhatsApp');
+            }
+            if (connection === 'open') {
+                console.log(`\nBot connected as ${socket.user?.id || 'Unknown'}\n`);
+                webInterface.setStatus('connected', `Connecté en tant que ${socket.user?.id || 'Unknown'}`);
+                restarting = false;
+                pairingSuccess = false;
+            }
+            if ((connection === 'close' || isNewLogin) && !restarting) {
+                const lastDisconnect = update.lastDisconnect || {};
+                const error = lastDisconnect.error || {};
+                const errorMessage = error.message || '';
+                const statusCode = error.status || error.code || error.attrs?.code;
 
-server.listen(PORT, () => {
+                if (errorMessage.includes('pairing configured successfully') || isNewLogin) {
+                    pairingSuccess = true;
+                    console.log('\nPairing successful. Reconnecting...\n');
+                    webInterface.setStatus('paired', 'Pairing réussi. Reconnexion...');
+                    restarting = true;
+                    attemptReconnect();
+                    return;
+                }
+
+                if (errorMessage.includes('restart required') || statusCode === 515 || statusCode === 428) {
+                    if (pairingSuccess) {
+                        console.log('\nPairing successful. Reconnecting...\n');
+                        webInterface.setStatus('paired', 'Pairing réussi. Reconnexion...');
+                        restarting = true;
+                        attemptReconnect();
+                        return;
+                    }
+                    restarting = true;
+                    console.log('\nConnection error. Reconnecting...\n');
+                    webInterface.setStatus('error', 'Erreur de connexion. Reconnexion...');
+                    attemptReconnect();
+                    return;
+                }
+
+                if (connection === 'close') {
+                    console.log('\nConnection closed. Reconnecting...\n');
+                    webInterface.setStatus('error', 'Connexion fermée. Reconnexion...');
+                    restarting = true;
+                    attemptReconnect();
+                    return;
+                }
+            }
+        });
+
+        socket.ev.on('error', (err) => {
+            console.error('Socket error:', err.message);
+        });
+    };
+
+    attachSocketEvents(sock, sessionId);
+
     console.log(`
 ╔═══════════════════════════════════════════════════╗
-║   Giluce WhatsApp Bot - Running Successfully!     ║
+║   Giluce WhatsApp Bot - Console Mode             ║
 ║                                                   ║
-║   🌐 Web Dashboard: http://localhost:${PORT}      ║
-║   📡 API Base: http://localhost:${PORT}/api       ║
 ║   ⚡ Prefix: ${config.prefix}                     ║
 ║   👑 Owner: ${config.ownerName[0]}                ║
-║                                                   ║
-║   Available Commands:                             ║
-║   • .menu    - Display bot menu                   ║
-║   • .ping    - Test bot response                  ║
-║   • .info    - Bot information                    ║
-║   • .kick    - Kick user (admin)                  ║
-║   • .promote - Promote to admin                   ║
-║   • .tagall  - Tag all members                    ║
-║   • .welcome - Toggle welcome message             ║
-║   • .antilink - Toggle anti-link                  ║
+║   🌐 Web QR: http://localhost:3000                ║
 ╚═══════════════════════════════════════════════════╝
     `);
+};
+
+startBot().catch((err) => {
+    console.error('Failed to start bot:', err);
+    process.exit(1);
 });
 
-// Handle graceful shutdown
 process.on('SIGINT', () => {
     console.log('\nShutting down...');
-    server.close(() => {
-        process.exit(0);
-    });
-});
-
-process.on('SIGTERM', () => {
-    console.log('\nShutting down...');
-    server.close(() => {
-        process.exit(0);
-    });
+    webInterface.close();
+    process.exit(0);
 });

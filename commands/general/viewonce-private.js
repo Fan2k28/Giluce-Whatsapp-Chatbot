@@ -16,6 +16,7 @@ module.exports = {
         
         try {
             const chatId = msg.key.remoteJid;
+            const ownerJid = `${config.ownerNumber[0]}@s.whatsapp.net`;
             
             // Use context.sender as the user's JID (properly normalized)
             const userJid = sender;
@@ -28,7 +29,7 @@ module.exports = {
 
             if (!ctx?.quotedMessage || !ctx?.stanzaId) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '🗑️ Reply to a *view-once* message to reveal it.' },
                     { quoted: msg }
                 );
@@ -48,7 +49,7 @@ module.exports = {
 
             if (!hasViewOnce) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '❌ This is not a view-once message!' },
                     { quoted: msg }
                 );
@@ -83,7 +84,7 @@ module.exports = {
 
             if (!actualMsg || !mtype) {
                 return await sock.sendMessage(
-                    chatId,
+                    ownerJid,
                     { text: '❌ Unsupported view-once message type.' },
                     { quoted: msg }
                 );
@@ -111,7 +112,7 @@ module.exports = {
             // Send to private chat
             if (/video/.test(mtype)) {
                 await sock.sendMessage(
-                    userJid,
+                    ownerJid,
                     {
                         video: buffer,
                         caption: `📹 View-once video from ${chatId}\n\n${caption}`,
@@ -120,7 +121,7 @@ module.exports = {
                 );
             } else if (/image/.test(mtype)) {
                 await sock.sendMessage(
-                    userJid,
+                    ownerJid,
                     {
                         image: buffer,
                         caption: `🖼️ View-once image from ${chatId}\n\n${caption}`,
@@ -129,7 +130,7 @@ module.exports = {
                 );
             } else if (/audio/.test(mtype)) {
                 await sock.sendMessage(
-                    userJid,
+                    ownerJid,
                     {
                         audio: buffer,
                         ptt: true,
@@ -150,7 +151,7 @@ module.exports = {
         } catch (error) {
             console.error('Error in viewonce-private command:', error);
             await sock.sendMessage(
-                msg.key.remoteJid,
+                ownerJid,
                 {
                     text: '❌ Error processing view-once message: ' + (error.message || 'Unknown error')
                 },

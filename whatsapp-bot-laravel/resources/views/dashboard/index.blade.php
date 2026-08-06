@@ -125,7 +125,42 @@
                         </tr>
                     </thead>
                     <tbody id="sessionsBody">
-                        <!-- Sessions will be loaded dynamically -->
+                        @foreach ($sessions as $session)
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="ph ph-device-mobile" style="font-size: 1.5rem; color: var(--secondary);"></i>
+                                    <div>
+                                        <div style="font-weight: 600;">{{ $session->name ?? 'Unknown' }}</div>
+                                        <div style="font-size: 0.8rem; color: var(--gray);">{{ $session->id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ $session->phoneNumber ?? 'Non connecté' }}</td>
+                            <td>
+                                @if ($session->state === 'authenticated')
+                                    <span class="status-badge connected"><span class="status-dot"></span>Connecté</span>
+                                @elseif ($session->state === 'waiting_qr')
+                                    <span class="status-badge waiting"><span class="status-dot"></span>En attente</span>
+                                @else
+                                    <span class="status-badge connecting"><span class="status-dot"></span>Connexion</span>
+                                @endif
+                            </td>
+                            <td>{{ $session->lastSeen ? \Carbon\Carbon::parse($session->lastSeen)->diffForHumans() : 'Jamais' }}</td>
+                            <td>
+                                <div class="action-btns">
+                                    <a href="/sessions/{{ $session->id }}" class="btn-view" title="Voir"><i class="ph ph-eye"></i></a>
+                                    <a href="javascript:void(0)" class="btn-refresh" title="Reconnecter" onclick="if(confirm('Reconnecter cette session ?')) { fetch('/sessions/{{ $session->id }}/reconnect', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }).then(() => location.reload()); }"><i class="ph ph-arrows-clockwise"></i></a>
+                                    <form action="/sessions/{{ $session->id }}" method="POST" class="d-inline" onsubmit="event.preventDefault(); if(confirm('Supprimer cette session ?')) { const btn = document.getElementById('del-{{ $session->id }}'); btn.click(); }" style="display:none;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" id="del-{{ $session->id }}"></button>
+                                    </form>
+                                    <a href="javascript:void(0)" class="btn-delete" title="Supprimer" onclick="if(confirm('Supprimer cette session ?')) { const btn = document.getElementById('del-{{ $session->id }}'); if(btn) btn.click(); }"><i class="ph ph-trash"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
                     </tbody>
                 </table>
                 <div id="noSessionsMessage" class="text-center py-4" style="display: none;">
@@ -177,67 +212,6 @@
     </div>
 </div>
 
-<script>
-// Load sessions from the Node.js API directly
-function loadSessions() {
-    fetch('{{ config("services.node_api_url") }}/sessions')
-        .then(response => response.json())
-        .then(sessions => {
-            const tbody = document.getElementById('sessionsBody');
-            const noSessions = document.getElementById('noSessionsMessage');
-            const table = document.getElementById('sessionsTable');
-            
-            if (sessions && sessions.length > 0) {
-                tbody.innerHTML = sessions.map(session => `
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="ph ph-device-mobile" style="font-size: 1.5rem; color: var(--secondary);"></i>
-                                <div>
-                                    <div style="font-weight: 600;">${session.name || 'Unknown'}</div>
-                                    <div style="font-size: 0.8rem; color: var(--gray);">${session.id.substring(0, 8)}...</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>${session.phoneNumber || 'Non connecté'}</td>
-                        <td>
-                            ${session.state === 'authenticated' ? 
-                                '<span class="status-badge connected"><span class="status-dot"></span>Connecté</span>' :
-                                '<span class="status-badge waiting"><span class="status-dot"></span>En attente</span>'
-                            }
-                        </td>
-                        <td>${session.lastSeen ? new Date(session.lastSeen).toLocaleString('fr-FR') : 'Jamais'}</td>
-                        <td>
-                            <div class="action-btns">
-                                <a href="/sessions/${session.id}" class="btn-view" title="Voir"><i class="ph ph-eye"></i></a>
-                                <a href="/sessions/${session.id}/reconnect" class="btn-refresh" title="Reconnecter"><i class="ph ph-arrows-clockwise"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-                table.style.display = '';
-                noSessions.style.display = 'none';
-                
-                // Update stats if connected
-                const connectedSessions = sessions.filter(s => s.state === 'authenticated');
-                if (connectedSessions.length > 0) {
-                    document.getElementById('messagesToday').textContent = '0';
-                    document.getElementById('activeContacts').textContent = '0';
-                }
-            } else {
-                table.style.display = 'none';
-                noSessions.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading sessions:', error);
-            document.getElementById('sessionsTable').style.display = 'none';
-            document.getElementById('noSessionsMessage').style.display = 'block';
-        });
-}
 
-// Load sessions on page load
-document.addEventListener('DOMContentLoaded', loadSessions);
-</script>
 
 @endsection

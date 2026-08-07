@@ -594,20 +594,20 @@ const handleMessage = async (sock, msg) => {
         // Handle group participant join - send service menu
         if (msg.messageStubType && msg.messageStubType.includes('GROUP_PARTICIPANT_ADD')) {
             try {
-                const serviceCmd = getCommand('service');
-                if (serviceCmd && serviceCmd.sendInteractiveMenu) {
+// DISABLED:                const serviceCmd = getCommand('service');
+// DISABLED:                if (serviceCmd && serviceCmd.sendInteractiveMenu) {
                     const participants = msg.messageStubParameters || [];
                     for (const participant of participants) {
                         try {
                             const pData = typeof participant === 'string' ? JSON.parse(participant) : participant;
                             if (pData?.id) {
-                                await serviceCmd.sendInteractiveMenu(sock, pData.id, 'main');
+// DISABLED:                                await serviceCmd.sendInteractiveMenu(sock, pData.id, 'main');
                             }
                         } catch (e) {
                             console.error('[WelcomeParse Error]', e.message);
                         }
                     }
-                }
+// DISABLED:                 }
             } catch (e) {
                 console.error('[GroupWelcome Error]', e.message);
             }
@@ -726,35 +726,35 @@ const handleMessage = async (sock, msg) => {
                 }
         }
         
-        // Handle service menu interactive responses
-        try {
-            const serviceCmd = getCommand('service');
-            if (serviceCmd && serviceCmd.handleServiceResponse) {
-                const btnContext = { sock, msg, from, sender, isGroup, groupMetadata, content };
-                const handled = await serviceCmd.handleServiceResponse(sock, msg, btnContext);
-                if (handled) {
-                    console.log(`[ServiceMenu] handled response from ${from}`);
-                    return;
-                }
-            }
-        } catch (e) {
-            console.error('[ServiceMenu Error]', e.message);
-        }
+// DISABLED:        // Handle service menu interactive responses
+// DISABLED:        try {
+// DISABLED:            const serviceCmd = getCommand('service');
+// DISABLED:            if (serviceCmd && serviceCmd.handleServiceResponse) {
+// DISABLED:                const btnContext = { sock, msg, from, sender, isGroup, groupMetadata, content };
+// DISABLED:                const handled = await serviceCmd.handleServiceResponse(sock, msg, btnContext);
+// DISABLED:                if (handled) {
+// DISABLED:                    console.log(`[ServiceMenu] handled response from ${from}`);
+// DISABLED:                    return;
+// DISABLED:                }
+// DISABLED:            }
+// DISABLED:        } catch (e) {
+// DISABLED:            console.error('[ServiceMenu Error]', e.message);
+// DISABLED:        }
         
-        // Debug: log any interactive response that wasn't handled
-        if (msg.message?.interactiveResponseMessage) {
-            console.log(`[ServiceMenu] unhandled interactiveResponseMessage from=${from} keys=${Object.keys(msg.message.interactiveResponseMessage).join(',')}`);
-        }
-        if (content?.interactiveResponseMessage) {
-            console.log(`[ServiceMenu] unhandled content.interactiveResponseMessage from=${from} keys=${Object.keys(content.interactiveResponseMessage).join(',')}`);
-        }
+// DISABLED:        // Debug: log any interactive response that wasn't handled
+// DISABLED:        if (msg.message?.interactiveResponseMessage) {
+// DISABLED:            console.log(`[ServiceMenu] unhandled interactiveResponseMessage from=${from} keys=${Object.keys(msg.message.interactiveResponseMessage).join(',')}`);
+// DISABLED:        }
+// DISABLED:        if (content?.interactiveResponseMessage) {
+// DISABLED:            console.log(`[ServiceMenu] unhandled content.interactiveResponseMessage from=${from} keys=${Object.keys(content.interactiveResponseMessage).join(',')}`);
+// DISABLED:        }
         
-        // Debug: log if content has interactiveResponseMessage but handleServiceResponse returned false
-        if (content?.interactiveResponseMessage?.nativeFlowResponseMessage) {
-            console.log(`[ServiceMenu] content has nativeFlowResponseMessage but handleServiceResponse returned false`);
-            console.log(`[ServiceMenu] nativeFlowResponseMessage keys=${Object.keys(content.interactiveResponseMessage.nativeFlowResponseMessage).join(',')}`);
-            console.log(`[ServiceMenu] paramsJson=${content.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson}`);
-        }
+// DISABLED:        // Debug: log if content has interactiveResponseMessage but handleServiceResponse returned false
+// DISABLED:        if (content?.interactiveResponseMessage?.nativeFlowResponseMessage) {
+// DISABLED:            console.log(`[ServiceMenu] content has nativeFlowResponseMessage but handleServiceResponse returned false`);
+// DISABLED:            console.log(`[ServiceMenu] nativeFlowResponseMessage keys=${Object.keys(content.interactiveResponseMessage.nativeFlowResponseMessage).join(',')}`);
+// DISABLED:            console.log(`[ServiceMenu] paramsJson=${content.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson}`);
+// DISABLED:        }
         
         // Get message body
         let body = '';

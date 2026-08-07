@@ -479,21 +479,4 @@ const handleButtonAction = async (sock, from, buttonId) => {
     }
 };
 
-module.exports = {
-    name: 'service',
-    aliases: ['menu', 'services', 'support'],
-    description: 'Menu interactif des services Ghostroar Digital',
-    category: 'general',
-    usage: '.service',
-
-    async execute(sock, msg, args, context) {
-        const { from } = context;
-        await sendInteractiveMenu(sock, from, 'main');
-    },
-
-    sendInteractiveMenu,
-    handleServiceResponse,
-    getConversationState,
-    setConversationState,
-    clearConversationState
-};
+module.exports = {};

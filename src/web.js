@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.WEB_PORT || 3000;
+const PORT = process.env.PORT || process.env.WEB_PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
@@ -57,8 +58,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`Web QR interface available at http://localhost:${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+    console.log(`Web QR interface available at http://${HOST}:${PORT}`);
 });
 
 module.exports = {

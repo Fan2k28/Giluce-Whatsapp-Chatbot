@@ -5,7 +5,7 @@
 
 module.exports = {
     // Bot Owner Configuration
-    ownerNumber: ['237671624397'], // Add your number without + or spaces
+    ownerNumber: ['237696373320'], // Add your number without + or spaces
     ownerName: ['Giluce Bot', 'Admin'],
     
     // Bot Configuration
